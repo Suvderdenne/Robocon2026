@@ -7,7 +7,7 @@ ABU Robocon 2026 - R2 KFS Recognition System  (ЗАСВАРЛАСАН v2)
   - Confidence тооцооны алдаа засав
   - KFS хайрцаг detect сайжруулав (Canny + white HSV)
   - Template DB хоосон байхад сэрэмжлүүлэг харуулна
-  - Кодыг цэвэрлэж, тайлбар нэмсэн
+  - Кодыг цэвэрлэж, тайлбар нэмсэн 
 
 Шаардлага:
   pip install opencv-python numpy
