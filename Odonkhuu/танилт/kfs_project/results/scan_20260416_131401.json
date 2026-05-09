@@ -1,0 +1,242 @@
+[
+  {
+    "timestamp": "2026-04-16T13:12:07.516380",
+    "block_id": 1,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.48,
+    "orb": 0.2,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:08.130068",
+    "block_id": 2,
+    "label": "REAL",
+    "char_name": "real_01",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 0.97,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:08.904355",
+    "block_id": 3,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:08.925236",
+    "block_id": 4,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:08.989377",
+    "block_id": 5,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.022378",
+    "block_id": 6,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.053443",
+    "block_id": 7,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.084318",
+    "block_id": 8,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.116366",
+    "block_id": 9,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.148431",
+    "block_id": 10,
+    "label": "REAL",
+    "char_name": "real_02",
+    "confidence": 0.57,
+    "orb": 0.4,
+    "hist": 1.0,
+    "ssim": 0.06
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.203363",
+    "block_id": 11,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.260407",
+    "block_id": 12,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.293272",
+    "block_id": 13,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.326363",
+    "block_id": 14,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.357452",
+    "block_id": 15,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.389609",
+    "block_id": 16,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.421392",
+    "block_id": 17,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.452333",
+    "block_id": 18,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:09.485379",
+    "block_id": 19,
+    "label": "REAL",
+    "char_name": "real_03",
+    "confidence": 0.44,
+    "orb": 0.1,
+    "hist": 1.0,
+    "ssim": 0.0
+  },
+  {
+    "timestamp": "2026-04-16T13:12:10.132464",
+    "block_id": 20,
+    "label": "REAL",
+    "char_name": "real_01",
+    "confidence": 0.43,
+    "orb": 0.1,
+    "hist": 0.97,
+    "ssim": 0.02
+  },
+  {
+    "timestamp": "2026-04-16T13:12:10.158334",
+    "block_id": 21,
+    "label": "REAL",
+    "char_name": "real_01",
+    "confidence": 0.43,
+    "orb": 0.1,
+    "hist": 0.97,
+    "ssim": 0.02
+  },
+  {
+    "timestamp": "2026-04-16T13:12:10.190395",
+    "block_id": 22,
+    "label": "REAL",
+    "char_name": "real_01",
+    "confidence": 0.43,
+    "orb": 0.1,
+    "hist": 0.97,
+    "ssim": 0.02
+  },
+  {
+    "timestamp": "2026-04-16T13:12:10.221392",
+    "block_id": 23,
+    "label": "REAL",
+    "char_name": "real_01",
+    "confidence": 0.43,
+    "orb": 0.1,
+    "hist": 0.97,
+    "ssim": 0.02
+  },
+  {
+    "timestamp": "2026-04-16T13:12:10.252397",
+    "block_id": 24,
+    "label": "REAL",
+    "char_name": "real_01",
+    "confidence": 0.43,
+    "orb": 0.1,
+    "hist": 0.97,
+    "ssim": 0.02
+  }
+]
