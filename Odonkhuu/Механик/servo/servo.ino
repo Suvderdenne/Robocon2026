@@ -1,34 +1,45 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════════
- * R2bot — 8-direction Stick + 2-motor D-Pad + 4 туслах digital мотор
+ * R2bot — 8-direction Stick + D-Pad (4 моторт) + 4 туслах мотор + 1 servo
+ *         M1, M2: H-bridge DC мотор    M3, M4: 24V BLDC (42GM-4260)
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   ⭐ ШИНЭ ӨӨРЧЛӨЛТҮҮД ⭐
+ *     • M3, M4 нь 24V BLDC (дотроо driver-тэй): SPEED + DIR + BRAKE
+ *         M3: D12 SPEED (PWM) + D40 DIR + D41 BRAKE
+ *         M4: D13 SPEED (PWM) + D42 DIR + D43 BRAKE
+ *     • Хуучин M3, M4 H-bridge pin (D6-D9) — RESERVE (зарлагдсан, ашиглагдахгүй)
+ *     • M6 кодоос устгасан (D12, D13 нь BLDC-д ашиглагдсан)
+ *     • D-Pad ⬆⬇ — БҮХ 4 моторыг ажиллуулна
+ *     • Мотор тус бүрд дээд хязгаар: M1, M2 → 160     M3, M4 → 240
+ *     • M3, M4 анхны offset −15
  *
  *   START          → Toggle ON/OFF
  *
  *   🕹️ Зүүн STICK    → 8 чиглэл (F/FR/R/BR/B/BL/L/FL)
  *   🕹️ Баруун STICK  → spin (4 мотор АДИЛ ЧИГЛЭЛД)
  *
- *   D-Pad ⬆⬇        → forward/backward (M1+M3)
+ *   D-Pad ⬆⬇        → forward/backward (БҮХ 4 мотор)
  *   D-Pad ⬅➡        → strafe          (M2+M4)
  *
- *   △ +20  × −20  ○ MAX(255)  □ MIN(50)
+ *   △ +20  × −20  ○ MAX  □ MIN(50)
  *
- * ━━━ ТУСЛАХ МОТОРУУД (digital) ━━━
- *   L1 → M7  (D23/D25)  cycle:  STOP→CW→STOP→CCW→STOP...
- *   L2 → M8  (D27/D29)  cycle:  STOP→UP→STOP→DOWN→STOP...
- *   R1 → M9  (D31/D30)  hold:   дарвал асна, авбал унтрана (пневмо)
+ * ━━━ ТУСЛАХ МОТОРУУД ━━━
+ *   L1 → M7  (D23/D25) digital cycle:  STOP→CW→STOP→CCW→STOP...
+ *   L2 → M8  (D27/D29) digital cycle:  STOP→UP→STOP→DOWN→STOP...
+ *   R1 → M9  (D31/D30) digital hold:   дарвал асна, авбал унтрана (пневмо)
+ *   R2 → M5  (D10/D11) PWM     cycle:  STOP→CW→STOP→CCW→STOP...
  *   SELECT+START → M10 (D33/D32) cycle, LED on D34
- *
- *   M5 (D10/D11) ба M6 (D12/D13) — зарлагдсан ч АШИГЛАХГҮЙ
+ *   SELECT+R1    → M11 (D37) 270° servo toggle (HOME ↔ 270°)
  *
  * ━━━ 🌀 PAIR DRIVE COMBO ━━━
- *   L1 + L2 → toggle pair (M1+M3 ↔ M2+M4)   ⚠️ M7, M8 нэг удаа cycle хийх боломжтой
- *   R1 + R2 → all 4 motors                  ⚠️ M9 хэсэг хугацаанд асна
+ *   L1 + L2 → toggle pair (M1+M3 ↔ M2+M4)
+ *   R1 + R2 → all 4 motors
  *
  * ━━━ 🧪 TEST COMBO ━━━
- *   SELECT + ×    → 4 мотор дарааллаар (M10-той зөрөөгүй болгож × руу нүүсэн)
- *   SELECT + △    → diagonal pair test
- *   ○             → test/cancel
+ *   L2 + R2  → 4 мотор дарааллаар
+ *   SELECT+△ → diagonal pair test
+ *   ○        → test/cancel
  *
  * ━━━ 🔧 LIVE CALIBRATION ━━━
  *   L1+⬆/⬇ → M1 ±5    R1+⬆/⬇ → M2 ±5
@@ -45,33 +56,39 @@
 // ═══════════════════════════════════════════
 // 🔄 MOTOR DIRECTION INVERT
 // ═══════════════════════════════════════════
-const bool MOTOR_INVERT_M1  = false;   // FL
-const bool MOTOR_INVERT_M2  = false;   // FR
-const bool MOTOR_INVERT_M3  = false;   // RR
-const bool MOTOR_INVERT_M4  = false;   // RL
+const bool MOTOR_INVERT_M1  = false;   // FL — H-bridge
+const bool MOTOR_INVERT_M2  = false;   // FR — H-bridge
+const bool MOTOR_INVERT_M3  = false;   // RR — BLDC
+const bool MOTOR_INVERT_M4  = false;   // RL — BLDC
 
-// Туслах моторын INVERT (digital pins)
-const bool MOTOR_INVERT_M7  = false;   // L1 cycle (хайрцгийн мотор)
-const bool MOTOR_INVERT_M8  = false;   // L2 cycle (дээш доош өргөгч)
-const bool MOTOR_INVERT_M9  = false;   // R1 hold (пневмо)
-const bool MOTOR_INVERT_M10 = false;   // SELECT+START cycle (жадны гар)
+const bool MOTOR_INVERT_M5  = false;
+const bool MOTOR_INVERT_M7  = false;
+const bool MOTOR_INVERT_M8  = false;
+const bool MOTOR_INVERT_M9  = false;
+const bool MOTOR_INVERT_M10 = false;
 
 // ═══════════════════════════════════════════
 // 🔧 MOTOR CALIBRATION OFFSETS (live editable)
+// ⭐ M3, M4 анхнаасаа −15 (бусдаас бага хурдтай)
 // ═══════════════════════════════════════════
-int MOTOR_OFFSET_M1 = 0;
-int MOTOR_OFFSET_M2 = 0;
-int MOTOR_OFFSET_M3 = 0;
-int MOTOR_OFFSET_M4 = 0;
+int MOTOR_OFFSET_M1 =   0;
+int MOTOR_OFFSET_M2 =   0;
+int MOTOR_OFFSET_M3 = -15;   // ⭐ default −15
+int MOTOR_OFFSET_M4 = -15;   // ⭐ default −15
 
 const int OFFSET_MIN  = -30;
 const int OFFSET_MAX  = +30;
 const int OFFSET_STEP = 5;
 
 // ═══════════════════════════════════════════
+// ⚡ МОТОР ТУС БҮРИЙН ДЭЭД ХУРДНЫ ХЯЗГААР
+// ═══════════════════════════════════════════
+const int MAX_SPEED_M1_M2 = 160;   // M1, M2 — хамгийн ихдээ 160
+const int MAX_SPEED_M3_M4 = 240;   // M3, M4 — хамгийн ихдээ 240
+
+// ═══════════════════════════════════════════
 // 🎯 8 ЧИГЛЭЛИЙН МОТОР PATTERN ХҮСНЭГТ
 // ═══════════════════════════════════════════
-// Sector ID: 1=F  2=FR  3=R  4=BR  5=B  6=BL  7=L  8=FL
 int DIRECTION_TABLE[9][4] = {
 //      m1     m2     m3     m4
   {     0,     0,     0,     0 },  // 0 = NONE
@@ -88,34 +105,47 @@ int DIRECTION_TABLE[9][4] = {
 // ═══════════════════════════════════════════
 // PIN CONFIGURATION
 // ═══════════════════════════════════════════
-// ▼ Үндсэн 4 мотор — PWM ▼
+// ▼ M1, M2 — H-bridge DC мотор (PWM) ▼
 #define M1_RPWM   2
 #define M1_LPWM   3
 #define M2_RPWM   4
 #define M2_LPWM   5
-#define M3_RPWM   6
-#define M3_LPWM   7
-#define M4_RPWM   8
-#define M4_LPWM   9
-// ▼ M5/M6 — PWM (зарлагдсан ч АШИГЛАХГҮЙ) ▼
+
+// ▼ ⚠️ ХУУЧИН M3, M4 H-bridge — RESERVE, ашиглагдахгүй ▼
+#define M3_RPWM   6     // ХООСОН — reserve (дараа ашиглаж болно)
+#define M3_LPWM   7     // ХООСОН — reserve
+#define M4_RPWM   8     // ХООСОН — reserve
+#define M4_LPWM   9     // ХООСОН — reserve
+
+// ▼ M5 — PWM (R2 cycle) ▼
 #define M5_RPWM   10
 #define M5_LPWM   11
-#define M6_RPWM   12
-#define M6_LPWM   13
-// ▼ M7-M10 — DIGITAL (PWM биш) ▼
-#define M7_RPWM   23     // L1 cycle
+
+// ▼ ⭐ M3, M4 — 24V BLDC мотор (42GM-4260, дотроо driver-тэй) ⭐ ▼
+//   Red→+24V, Black→24V GND, Blue→PWM SPEED, White→DIR, Green→BRAKE, Yellow→NC
+//   D12, D13 нь хуучин M6 PWM байсан (M6 устгасан)
+#define M3_SPEED  12    // Blue  — PWM speed (hardware PWM)
+#define M3_DIR    40    // White — direction (HIGH/LOW)
+#define M3_BRAKE  41    // Green — brake (HIGH=off, LOW=on)
+#define M4_SPEED  13    // Blue  — PWM speed (hardware PWM)
+#define M4_DIR    42    // White — direction
+#define M4_BRAKE  43    // Green — brake
+
+// ▼ M7-M10 — DIGITAL ▼
+#define M7_RPWM   23
 #define M7_LPWM   25
-#define M8_RPWM   27     // L2 cycle
+#define M8_RPWM   27
 #define M8_LPWM   29
-#define M9_RPWM   31     // R1 hold (пневмо)
+#define M9_RPWM   31
 #define M9_LPWM   30
-#define M10_RPWM  33     // SELECT+START cycle
+#define M10_RPWM  33
 #define M10_LPWM  32
-#define M10_LED   34     // M10 LED indicator
+#define M10_LED   34
+
 // ▼ M11 — 270° SERVO (D37, SELECT+R1) ▼
 #define M11_PIN   37
-const int M11_HOME_US     = 500;    // 0° байрлал (home)
-const int M11_ROTATED_US  = 2500;   // 270° байрлал
+const int M11_HOME_US     = 500;
+const int M11_ROTATED_US  = 2500;
 
 // ▼ PS2 controller pins ▼
 #define PS2_DAT  24
@@ -136,8 +166,7 @@ const int SPEED_MAX       = 255;
 const int DEFAULT_SPEED   = 80;
 const int SPEED_STEP      = 20;
 const int TEST_SPEED      = 150;
-const int M5_SPEED        = 230;   // АШИГЛАХГҮЙ
-const int M6_SPEED        = 230;   // АШИГЛАХГҮЙ
+const int M5_SPEED        = 230;
 const unsigned long PS2_READ_INTERVAL  = 50;
 const unsigned long TEST_PHASE_MS      = 1000;
 
@@ -182,21 +211,15 @@ int      testPhase      = 0;
 unsigned long testStart = 0;
 
 int       lastSector       = -1;
-int       activeSector     = 0;
+int       activeSector     = 2;
 
-// M5/M6 — declared but not used
-bool      m5Toggled        = false;
-int       m6State          = 0;
+int       m5State          = 0;
+int       m7State          = 0;
+int       m8State          = 0;
+int       m10State         = 0;
 
-// M7, M8, M10 циклийн state (4-state: 0=STOP, 1=CW, 2=STOP, 3=CCW)
-int       m7State          = 0;   // L1 cycle
-int       m8State          = 0;   // L2 cycle
-int       m10State         = 0;   // SELECT+START cycle
-// M9 нь зөвхөн hold-on/release-off — state хадгалах хэрэггүй
-
-// M11 — Servo (270°), SELECT+R1 toggle
 Servo     m11Servo;
-bool      m11Rotated       = false;   // false = HOME (0°), true = 270°
+bool      m11Rotated       = false;
 
 // ═══════════════════════════════════════════
 // SAFE PIN INIT
@@ -221,7 +244,7 @@ int applyInvert(int speed, bool invert) {
 }
 
 // ═══════════════════════════════════════════
-// LOW-LEVEL MOTOR (PWM — M1-M6)
+// LOW-LEVEL MOTOR (PWM — M1, M2, M5)
 // ═══════════════════════════════════════════
 void driveMotor(int rpwm, int lpwm, int speed) {
   speed = constrain(speed, -SPEED_MAX, SPEED_MAX);
@@ -238,11 +261,8 @@ void driveMotor(int rpwm, int lpwm, int speed) {
 }
 
 // ═══════════════════════════════════════════
-// LOW-LEVEL DIGITAL MOTOR (M7-M10) — non-PWM pins
+// LOW-LEVEL DIGITAL MOTOR (M7-M10)
 // ═══════════════════════════════════════════
-//   direction:  +1 = forward (full power)
-//               -1 = reverse (full power)
-//                0 = stop
 void driveDigitalMotor(int rpwm, int lpwm, int direction, bool invert) {
   if (invert) direction = -direction;
   if (direction > 0) {
@@ -258,7 +278,33 @@ void driveDigitalMotor(int rpwm, int lpwm, int direction, bool invert) {
 }
 
 // ═══════════════════════════════════════════
+// ⭐ DRIVE BLDC (M3, M4) — 24V мотор, дотроо driver-тэй ⭐
+// ═══════════════════════════════════════════
+//   speedPin: PWM (Blue) — 0-255 хурд
+//   dirPin:   digital (White) — HIGH=ccw, LOW=cw (өөрчилж тестлэх)
+//   brakePin: digital (Green) — HIGH=brake off, LOW=brake on
+//   speed:    -255..+255 (тэмдэг = чиглэл, хэмжээ = хурд)
+// ═══════════════════════════════════════════
+void driveBLDC(int speedPin, int dirPin, int brakePin, int speed) {
+  speed = constrain(speed, -SPEED_MAX, SPEED_MAX);
+
+  if (speed == 0) {
+    analogWrite(speedPin, 0);
+    digitalWrite(brakePin, LOW);    // brake ENGAGED (мотор зогсох)
+    return;
+  }
+
+  digitalWrite(brakePin, HIGH);     // brake RELEASED
+  digitalWrite(dirPin, (speed > 0) ? LOW : HIGH);
+  analogWrite(speedPin, abs(speed));
+}
+
+// ═══════════════════════════════════════════
 // 🎯 4-МОТОРЫГ ХАМТ УДИРДАХ (Wheels)
+// ═══════════════════════════════════════════
+//   Дараалал: pair → offset → CAP → invert → drive
+//   M1, M2 нь ±160-аас хэтрэхгүй
+//   M3, M4 нь ±240-аас хэтрэхгүй
 // ═══════════════════════════════════════════
 void writeFourMotors(int m1, int m2, int m3, int m4) {
   switch (pairMode) {
@@ -267,18 +313,30 @@ void writeFourMotors(int m1, int m2, int m3, int m4) {
     case PAIR_ALL:
     default: break;
   }
+
+  // ▼ Offset (M3, M4 анхнаасаа −15) ▼
   m1 = applyOffset(m1, MOTOR_OFFSET_M1);
   m2 = applyOffset(m2, MOTOR_OFFSET_M2);
   m3 = applyOffset(m3, MOTOR_OFFSET_M3);
   m4 = applyOffset(m4, MOTOR_OFFSET_M4);
+
+  // ▼ ⭐ Мотор тус бүрд CAP — M1, M2 = ±160; M3, M4 = ±240 ⭐
+  m1 = constrain(m1, -MAX_SPEED_M1_M2, MAX_SPEED_M1_M2);
+  m2 = constrain(m2, -MAX_SPEED_M1_M2, MAX_SPEED_M1_M2);
+  m3 = constrain(m3, -MAX_SPEED_M3_M4, MAX_SPEED_M3_M4);
+  m4 = constrain(m4, -MAX_SPEED_M3_M4, MAX_SPEED_M3_M4);
+
+  // ▼ Invert ▼
   m1 = applyInvert(m1, MOTOR_INVERT_M1);
   m2 = applyInvert(m2, MOTOR_INVERT_M2);
   m3 = applyInvert(m3, MOTOR_INVERT_M3);
   m4 = applyInvert(m4, MOTOR_INVERT_M4);
-  driveMotor(M1_RPWM, M1_LPWM, m1);
-  driveMotor(M2_RPWM, M2_LPWM, m2);
-  driveMotor(M3_RPWM, M3_LPWM, m3);
-  driveMotor(M4_RPWM, M4_LPWM, m4);
+
+  // ▼ Drive ▼
+  driveMotor(M1_RPWM, M1_LPWM, m1);                            // M1 — H-bridge
+  driveMotor(M2_RPWM, M2_LPWM, m2);                            // M2 — H-bridge
+  driveBLDC(M3_SPEED, M3_DIR, M3_BRAKE, m3);                   // M3 — BLDC ⭐
+  driveBLDC(M4_SPEED, M4_DIR, M4_BRAKE, m4);                   // M4 — BLDC ⭐
 }
 
 void driveSingleMotor(int motorIndex, int speed) {
@@ -293,8 +351,8 @@ void driveSingleMotor(int motorIndex, int speed) {
   switch (motorIndex) {
     case 0: driveMotor(M1_RPWM, M1_LPWM, speed); break;
     case 1: driveMotor(M2_RPWM, M2_LPWM, speed); break;
-    case 2: driveMotor(M3_RPWM, M3_LPWM, speed); break;
-    case 3: driveMotor(M4_RPWM, M4_LPWM, speed); break;
+    case 2: driveBLDC(M3_SPEED, M3_DIR, M3_BRAKE, speed); break;
+    case 3: driveBLDC(M4_SPEED, M4_DIR, M4_BRAKE, speed); break;
   }
 }
 
@@ -309,6 +367,18 @@ const char* motorName(int idx) {
 // ═══════════════════════════════════════════
 // 🎯 8-SECTOR DRIVE
 // ═══════════════════════════════════════════
+void stopAllRaw() {
+  driveMotor(M1_RPWM, M1_LPWM, 0);
+  driveMotor(M2_RPWM, M2_LPWM, 0);
+  driveBLDC(M3_SPEED, M3_DIR, M3_BRAKE, 0);   // BLDC brake engaged
+  driveBLDC(M4_SPEED, M4_DIR, M4_BRAKE, 0);   // BLDC brake engaged
+}
+
+void stopAll() {
+  stopAllRaw();
+  currentState = "STOPPED";
+}
+
 void driveSector(int sector, int speed) {
   if (sector < 1 || sector > 8) {
     stopAllRaw();
@@ -336,51 +406,53 @@ const char* sectorName(int sector) {
 // 🌀 SPIN, D-PAD HELPERS
 // ═══════════════════════════════════════════
 void spinAll(int speed) { writeFourMotors(speed, speed, speed, speed); }
-void driveTwoFwdBwd(int speed) { writeFourMotors(speed, 0, -speed, 0); }
+
+// ⭐ D-Pad ⬆⬇ — БҮХ 4 моторыг ажиллуулна
+void driveTwoFwdBwd(int speed) { writeFourMotors(speed, speed, -speed, -speed); }
+
+// D-Pad ⬅➡ — strafe (M2, M4 идэвхтэй)
 void driveTwoStrafe(int speed) { writeFourMotors(0, speed, 0, -speed); }
 
-void stopAllRaw() {
-  driveMotor(M1_RPWM, M1_LPWM, 0);
-  driveMotor(M2_RPWM, M2_LPWM, 0);
-  driveMotor(M3_RPWM, M3_LPWM, 0);
-  driveMotor(M4_RPWM, M4_LPWM, 0);
-}
-
-void stopAll() {
-  stopAllRaw();
-  currentState = "STOPPED";
-}
-
-void moveForward()   { driveTwoFwdBwd( currentSpeed); currentState = "FWD_2M"; }
-void moveBackward()  { driveTwoFwdBwd(-currentSpeed); currentState = "BWD_2M"; }
+void moveForward()   { driveTwoFwdBwd( currentSpeed); currentState = "FWD_4M"; }
+void moveBackward()  { driveTwoFwdBwd(-currentSpeed); currentState = "BWD_4M"; }
 void strafeLeft()    { driveTwoStrafe(-currentSpeed); currentState = "STRAFE_L_2M"; }
 void strafeRight()   { driveTwoStrafe( currentSpeed); currentState = "STRAFE_R_2M"; }
 
 // ═══════════════════════════════════════════
-// ⚙️ M5 / 🔁 M6 — ЗАРЛАГДСАН ГЭХДЭЭ АШИГЛАХГҮЙ
-// (handleM5, handleM6 ДУУДАГДАХГҮЙ — processInput-д комментолсон)
+// ⚙️ M5 — R2 CYCLE МОТОР (D10/D11, PWM)
 // ═══════════════════════════════════════════
 void driveM5(int speed) {
+  if (MOTOR_INVERT_M5) speed = -speed;
   speed = constrain(speed, -SPEED_MAX, SPEED_MAX);
   if (speed > 0)      { analogWrite(M5_RPWM, speed);  analogWrite(M5_LPWM, 0); }
   else if (speed < 0) { analogWrite(M5_RPWM, 0);      analogWrite(M5_LPWM, -speed); }
   else                { analogWrite(M5_RPWM, 0);      analogWrite(M5_LPWM, 0); }
 }
-void stopM5() { m5Toggled = false; driveM5(0); }
+void stopM5() { m5State = 0; driveM5(0); }
 
-void driveM6(int speed) {
-  speed = constrain(speed, -SPEED_MAX, SPEED_MAX);
-  if (speed > 0)      { analogWrite(M6_RPWM, speed);  analogWrite(M6_LPWM, 0); }
-  else if (speed < 0) { analogWrite(M6_RPWM, 0);      analogWrite(M6_LPWM, -speed); }
-  else                { analogWrite(M6_RPWM, 0);      analogWrite(M6_LPWM, 0); }
+void handleM5() {
+  bool comboActive = ps2x.Button(PSB_L2)
+                  || ps2x.Button(PSB_R1)
+                  || ps2x.Button(PSB_PAD_UP)
+                  || ps2x.Button(PSB_PAD_DOWN);
+  if (ps2x.ButtonPressed(PSB_R2) && !comboActive) {
+    m5State = (m5State + 1) % 4;
+    Serial.print(F("⚙️ M5 cycle: "));
+    switch (m5State) {
+      case 0: Serial.println(F("STOPPED")); break;
+      case 1: Serial.println(F("CW"));      break;
+      case 2: Serial.println(F("STOPPED")); break;
+      case 3: Serial.println(F("CCW"));     break;
+    }
+  }
+  int speed = 0;
+  if      (m5State == 1) speed = +M5_SPEED;
+  else if (m5State == 3) speed = -M5_SPEED;
+  driveM5(speed);
 }
-void stopM6() { m6State = 0; driveM6(0); }
 
 // ═══════════════════════════════════════════
-// 📦 M7 — ХАЙРЦГИЙН ЭРГЭДЭГ МОТОР (D23/D25, L1)
-// ═══════════════════════════════════════════
-//   L1 → 4 төлөв цикл: STOP → CW → STOP → CCW → STOP → ...
-//   ⚠️ L1+L2 эсвэл L1+⬆⬇ combo үед cycle хийхгүй
+// 📦 M7 — L1 CYCLE (D23/D25, digital)
 // ═══════════════════════════════════════════
 void driveM7(int direction) {
   driveDigitalMotor(M7_RPWM, M7_LPWM, direction, MOTOR_INVERT_M7);
@@ -408,10 +480,7 @@ void handleM7() {
 }
 
 // ═══════════════════════════════════════════
-// ⬆⬇ M8 — ДЭЭШ ДООШ ӨРГӨГЧ МОТОР (D27/D29, L2)
-// ═══════════════════════════════════════════
-//   L2 → 4 төлөв цикл: STOP → UP → STOP → DOWN → STOP → ...
-//   ⚠️ L1+L2 эсвэл L2+⬆⬇ combo үед cycle хийхгүй
+// ⬆⬇ M8 — L2 CYCLE (D27/D29, digital)
 // ═══════════════════════════════════════════
 void driveM8(int direction) {
   driveDigitalMotor(M8_RPWM, M8_LPWM, direction, MOTOR_INVERT_M8);
@@ -420,7 +489,7 @@ void stopM8() { m8State = 0; driveM8(0); }
 
 void handleM8() {
   bool comboActive = ps2x.Button(PSB_L1)
-                  || ps2x.Button(PSB_R2)         // R2+L2 = test mode
+                  || ps2x.Button(PSB_R2)
                   || ps2x.Button(PSB_PAD_UP)
                   || ps2x.Button(PSB_PAD_DOWN);
   if (ps2x.ButtonPressed(PSB_L2) && !comboActive) {
@@ -440,11 +509,7 @@ void handleM8() {
 }
 
 // ═══════════════════════════════════════════
-// 💨 M9 — ХИЙН ЦЕЛИНДЕР (D31/D30, R1 hold)
-// ═══════════════════════════════════════════
-//   R1 дараастай үед: тог өгөнө (forward direction)
-//   R1 тавихад: унтарна
-//   ⚠️ SELECT+R1 нь M11 servo-д очдог тул SELECT held үед M9 идэвхгүй
+// 💨 M9 — R1 HOLD (D31/D30, пневмо)
 // ═══════════════════════════════════════════
 void driveM9(int direction) {
   driveDigitalMotor(M9_RPWM, M9_LPWM, direction, MOTOR_INVERT_M9);
@@ -452,14 +517,12 @@ void driveM9(int direction) {
 void stopM9() { driveM9(0); }
 
 void handleM9() {
-  // R1 held + SELECT NOT held → M9 on
-  // (SELECT+R1 нь M11 servo, тэгэхээр M9 идэвхгүй болгож байна)
   bool m9On = ps2x.Button(PSB_R1) && !ps2x.Button(PSB_SELECT);
   driveM9(m9On ? +1 : 0);
 }
 
 // ═══════════════════════════════════════════
-// 🎯 M10 — ЖАДНЫ ГАР (D33/D32, SELECT+START) + LED on D34
+// 🎯 M10 — SELECT+START CYCLE (D33/D32) + LED D34
 // ═══════════════════════════════════════════
 void driveM10(int direction) {
   driveDigitalMotor(M10_RPWM, M10_LPWM, direction, MOTOR_INVERT_M10);
@@ -487,11 +550,6 @@ void handleM10() {
 // ═══════════════════════════════════════════
 // 🤖 M11 — 270° SERVO (D37, SELECT+R1)
 // ═══════════════════════════════════════════
-//   2 төлөвт toggle:
-//     1-р дарах: 270° руу эргэнэ
-//     2-р дарах: HOME (0°) руу буцаана
-//   SELECT+R1 — нэг удаа хамт дарах бүрд
-// ═══════════════════════════════════════════
 void driveM11(bool rotated) {
   if (rotated) m11Servo.writeMicroseconds(M11_ROTATED_US);
   else         m11Servo.writeMicroseconds(M11_HOME_US);
@@ -499,11 +557,10 @@ void driveM11(bool rotated) {
 
 void stopM11() {
   m11Rotated = false;
-  driveM11(false);   // HOME руу буцаана
+  driveM11(false);
 }
 
 void handleM11() {
-  // SELECT held + R1 rising edge → toggle servo
   if (ps2x.Button(PSB_SELECT) && ps2x.ButtonPressed(PSB_R1)) {
     m11Rotated = !m11Rotated;
     Serial.print(F("🤖 M11 servo: "));
@@ -512,19 +569,16 @@ void handleM11() {
   }
 }
 
-// Бүх туслах моторыг зэрэг зогсоох helpers
 void stopAllAux() {
-  stopM5(); stopM6();
+  stopM5();
   stopM7(); stopM8();
   stopM9(); stopM10();
   stopM11();
 }
 void driveAllAuxZero() {
-  driveM5(0); driveM6(0);
+  driveM5(0);
   driveM7(0); driveM8(0);
   driveM9(0); driveM10(0);
-  // M11 нь өөрөө байрлал хадгалдаг тул HOME руу буцаахгүй —
-  // зөвхөн START toggle буюу stopAllAux үед буцаана
 }
 
 // ═══════════════════════════════════════════
@@ -568,7 +622,7 @@ void handleSpeedButtons() {
   }
   if (ps2x.ButtonPressed(PSB_CIRCLE)) {
     currentSpeed = SPEED_MAX;
-    Serial.println(F("🔥 MAX SPEED (255)"));
+    Serial.println(F("🔥 MAX SPEED (M1,M2→160 cap, M3,M4→240 cap)"));
   }
   if (ps2x.ButtonPressed(PSB_SQUARE)) {
     currentSpeed = 50;
@@ -622,8 +676,11 @@ bool handleCalibration() {
   }
 
   if (SEL && ps2x.ButtonPressed(PSB_CIRCLE)) {
-    MOTOR_OFFSET_M1 = MOTOR_OFFSET_M2 = MOTOR_OFFSET_M3 = MOTOR_OFFSET_M4 = 0;
-    Serial.println(F("🔄 ALL OFFSETS RESET → 0"));
+    MOTOR_OFFSET_M1 = 0;
+    MOTOR_OFFSET_M2 = 0;
+    MOTOR_OFFSET_M3 = -15;   // ⭐ default −15 хадгална
+    MOTOR_OFFSET_M4 = -15;
+    Serial.println(F("🔄 OFFSETS RESET (M1,M2=0; M3,M4=−15)"));
     return true;
   }
   if (SEL && ps2x.ButtonPressed(PSB_SQUARE)) {
@@ -654,11 +711,9 @@ bool handlePairCombos() {
 }
 
 // ═══════════════════════════════════════════
-// 🧪 MOTOR TEST COMBOS (TEST_SEQUENCE → L2+R2 руу нүүсэн)
+// 🧪 MOTOR TEST COMBOS
 // ═══════════════════════════════════════════
 bool handleTestCombos() {
-  // TEST SEQUENCE — L2 + R2 (зэрэг дарах)
-  // L2 held + R2 pressed, эсвэл R2 held + L2 pressed — аль аль ажиллана
   bool l2heldR2pressed = ps2x.Button(PSB_L2) && ps2x.ButtonPressed(PSB_R2);
   bool r2heldL2pressed = ps2x.Button(PSB_R2) && ps2x.ButtonPressed(PSB_L2);
   if (l2heldR2pressed || r2heldL2pressed) {
@@ -671,7 +726,6 @@ bool handleTestCombos() {
     Serial.println(F(" forward"));
     return true;
   }
-  // PAIR TEST — SELECT + △
   if (ps2x.Button(PSB_SELECT) && ps2x.ButtonPressed(PSB_TRIANGLE)) {
     testMode  = TEST_PAIRS;
     testStep  = 0;
@@ -796,7 +850,9 @@ bool handleSticks() {
   }
 
   float angleDeg = atan2((float)LX, (float)LY) * 180.0f / (float)PI;
-  if (angleDeg < 0) angleDeg += 360.0f;
+  angleDeg += 45.0f;
+  if (angleDeg < 0)   angleDeg += 360.0f;
+  if (angleDeg >= 360.0f) angleDeg -= 360.0f;
 
   int sector = (((int)((angleDeg + 22.5f) / 45.0f)) % 8) + 1;
 
@@ -821,7 +877,6 @@ void processInput() {
 
   ps2x.read_gamepad(false, 0);
 
-  // START дангаар → robot toggle (SELECT+START нь M10-д очино)
   if (ps2x.ButtonPressed(PSB_START) && !ps2x.Button(PSB_SELECT)) {
     robotEnabled = !robotEnabled;
     stopAll();
@@ -854,19 +909,13 @@ void processInput() {
     return;
   }
 
-  // ━━━ Туслах мотор handler-ууд ━━━
-  // M5, M6 — АШИГЛАХГҮЙ (зарлагдсан ч дуудагдахгүй)
-  // handleM5();  ← idle, дуудахгүй
-  // handleM6();  ← idle, дуудахгүй
+  handleM5();
+  handleM7();
+  handleM8();
+  handleM9();
+  handleM10();
+  handleM11();
 
-  // M7-M10 идэвхтэй
-  handleM7();    // L1 cycle (хайрцгийн мотор)
-  handleM8();    // L2 cycle (дээш доош өргөгч)
-  handleM9();    // R1 hold  (пневмо)
-  handleM10();   // SELECT+START cycle (жадны гар + LED)
-  handleM11();   // SELECT+R1 toggle (270° servo)
-
-  // ━━━ Combo, тест, дугуй ━━━
   bool calibrated  = handleCalibration();
   bool paired      = handlePairCombos();
   bool testStarted = handleTestCombos();
@@ -900,13 +949,20 @@ void processInput() {
 // SETUP
 // ═══════════════════════════════════════════
 void setup() {
-  // PWM motor pins (M1-M6)
+  // M1, M2 — H-bridge (PWM pins)
   safePinInit(M1_RPWM); safePinInit(M1_LPWM);
   safePinInit(M2_RPWM); safePinInit(M2_LPWM);
-  safePinInit(M3_RPWM); safePinInit(M3_LPWM);
-  safePinInit(M4_RPWM); safePinInit(M4_LPWM);
+
+  // ⚠️ M3, M4 H-bridge pin (D6-D9) — RESERVE, init ХИЙХГҮЙ
+  //    (зарлагдсан хэвээр, дараа ашиглах боломжтой)
+
+  // M5 PWM
   safePinInit(M5_RPWM); safePinInit(M5_LPWM);
-  safePinInit(M6_RPWM); safePinInit(M6_LPWM);
+
+  // ⭐ M3, M4 BLDC — SPEED (PWM), DIR, BRAKE ⭐
+  safePinInit(M3_SPEED); safePinInit(M3_DIR); safePinInit(M3_BRAKE);
+  safePinInit(M4_SPEED); safePinInit(M4_DIR); safePinInit(M4_BRAKE);
+  // safePinInit нь LOW → BRAKE LOW → brake ENGAGED анх (мотор зогссон)
 
   // Digital motor pins (M7-M10) + LED
   safePinInit(M7_RPWM);  safePinInit(M7_LPWM);
@@ -915,9 +971,9 @@ void setup() {
   safePinInit(M10_RPWM); safePinInit(M10_LPWM);
   safePinInit(M10_LED);
 
-  // M11 — Servo (270°). attach(pin, min_us, max_us)
+  // M11 — Servo (270°)
   m11Servo.attach(M11_PIN, M11_HOME_US, M11_ROTATED_US);
-  driveM11(false);   // эхлээд HOME байрлал
+  driveM11(false);
   m11Rotated = false;
 
   delay(200);
@@ -925,7 +981,7 @@ void setup() {
   delay(300);
 
   Serial.println(F("\n═══════════════════════════════════════"));
-  Serial.println(F("  R2bot — 8-direction + 4 aux digital motors"));
+  Serial.println(F("  R2bot — M1,M2 H-bridge + M3,M4 BLDC"));
   Serial.println(F("═══════════════════════════════════════\n"));
 
   initPS2();
@@ -934,44 +990,17 @@ void setup() {
   }
 
   Serial.println(F("\n━━━ MOTOR LAYOUT ━━━"));
-  Serial.println(F("  M1=FL (D2,D3)    M2=FR (D4,D5)"));
-  Serial.println(F("  M4=RL (D8,D9)    M3=RR (D6,D7)"));
-  Serial.println(F("  M5/M6 (D10-D13) → ЗАРЛАГДСАН ГЭХДЭЭ АШИГЛАХГҮЙ"));
-  Serial.println(F("  M7  (D23/D25) → L1 cycle (хайрцгийн мотор)"));
-  Serial.println(F("  M8  (D27/D29) → L2 cycle (дээш доош өргөгч)"));
-  Serial.println(F("  M9  (D31/D30) → R1 hold (пневмо целиндер)"));
-  Serial.println(F("  M10 (D33/D32) → SELECT+START cycle (жадны гар)"));
-  Serial.println(F("  M10 LED (D34)"));
-  Serial.println(F("  M11 (D37)     → SELECT+R1 toggle (270° servo)"));
+  Serial.println(F("  M1=FL H-bridge (D2,D3)  — max 160"));
+  Serial.println(F("  M2=FR H-bridge (D4,D5)  — max 160"));
+  Serial.println(F("  M3=RR BLDC (D12 SPD, D40 DIR, D41 BRAKE) — max 240, offset −15"));
+  Serial.println(F("  M4=RL BLDC (D13 SPD, D42 DIR, D43 BRAKE) — max 240, offset −15"));
+  Serial.println(F("  D6,D7,D8,D9 — RESERVE (хуучин M3, M4 H-bridge байсан)"));
+  Serial.println(F("  M5 (D10,D11) → R2 cycle"));
+  Serial.println(F("  M7-M10 (digital), M11 (servo D37)"));
 
-  Serial.println(F("\n━━━ ҮНДСЭН ХЯНАЛТ ━━━"));
-  Serial.println(F("  START         → ON/OFF (SELECT-гүйгээр)"));
-  Serial.println(F("  Зүүн стик     → 8-direction translate"));
-  Serial.println(F("  Баруун стик   → spin"));
-  Serial.println(F("  D-Pad ⬆⬇      → fwd/back (M1+M3)"));
-  Serial.println(F("  D-Pad ⬅➡      → strafe   (M2+M4)"));
-  Serial.println(F("  △+20 ×−20 ○MAX □MIN"));
-
-  Serial.println(F("\n━━━ ТУСЛАХ МОТОРУУД ━━━"));
-  Serial.println(F("  L1 → M7 cycle  (4-state: STOP/CW/STOP/CCW)"));
-  Serial.println(F("  L2 → M8 cycle  (4-state: STOP/UP/STOP/DOWN)"));
-  Serial.println(F("  R1 → M9 hold   (дараастай үед асна, SELECT-гүйгээр)"));
-  Serial.println(F("  SELECT+START → M10 cycle, LED on D34"));
-  Serial.println(F("  SELECT+R1   → M11 servo toggle (HOME ↔ 270°)"));
-
-  Serial.println(F("\n━━━ 🌀 PAIR (wheels) ━━━"));
-  Serial.println(F("  L1+L2 → M1+M3 / M2+M4 toggle"));
-  Serial.println(F("  R1+R2 → all 4"));
-
-  Serial.println(F("\n━━━ 🧪 TEST ━━━"));
-  Serial.println(F("  L2+R2    → seq test (зэрэг даравал)"));
-  Serial.println(F("  SELECT+△ → pair test"));
-  Serial.println(F("  ○        → cancel"));
-
-  Serial.println(F("\n━━━ 🔧 CALIB ━━━"));
-  Serial.println(F("  L1+⬆⬇ M1    R1+⬆⬇ M2"));
-  Serial.println(F("  R2+⬆⬇ M3    L2+⬆⬇ M4"));
-  Serial.println(F("  SELECT+○ reset    SELECT+□ print"));
+  Serial.println(F("\n━━━ D-PAD ━━━"));
+  Serial.println(F("  ⬆⬇ → БҮХ 4 мотор (M1,M2 +s, M3,M4 −s)"));
+  Serial.println(F("  ⬅➡ → M2 + M4 strafe"));
 
   printAllOffsets();
   Serial.println(F("⏸️ ROBOT OFF — press START\n"));
